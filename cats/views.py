@@ -2,6 +2,9 @@ from rest_framework import permissions
 from rest_framework import viewsets
 from rest_framework.throttling import AnonRateThrottle, ScopedRateThrottle
 from rest_framework.pagination import PageNumberPagination
+from rest_framework import filters
+
+from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import Achievement, Cat, User
 from .permissions import OwnerOrReadOnly, ReadOnly
@@ -14,6 +17,7 @@ class CatViewSet(viewsets.ModelViewSet):
     queryset = Cat.objects.all()
     serializer_class = CatSerializer
     permission_classes = (OwnerOrReadOnly,)
+    
     # throttle_classes = (AnonRateThrottle,)  # Подключили класс AnonRateThrottle
     # Если кастомный тротлинг-класс вернёт True - запросы будут обработаны
     # Если он вернёт False - все запросы будут отклонены
@@ -21,7 +25,20 @@ class CatViewSet(viewsets.ModelViewSet):
     # А далее применится лимит low_request
     throttle_scope = 'low_request'
     # pagination_class = PageNumberPagination
-    pagination_class = CatsPagination
+    
+    # Указываем фильтрующий бэкенд DjangoFilterBackend
+    # Из библиотеки django-filter
+    filter_backends = (DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter)
+    
+    # Временно отключим пагинацию на уровне вьюсета, 
+    # так будет удобнее настраивать фильтрацию
+    pagination_class = None # CatsPagination
+
+    # Фильтровать будем по полям color и birth_year модели Cat
+    filterset_fields = ('color', 'birth_year')
+    search_fields = ('name', 'achievements__name', 'owner__username')
+    ordering_fields = ('name', 'birth_year')
+    ordering = ('birth_year',) 
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
